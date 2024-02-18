@@ -1,6 +1,6 @@
 # Дипломное задание к курсу «Продвинутый JavaScript». Retro Game
 
-#### Deployment: https://ivankravz.github.io/ahj-dnd/
+#### Deployment: https://ivankravz.github.io/js-advanced-diploma/
 
 ## Предыстория
 
