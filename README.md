@@ -1,6 +1,6 @@
 # Дипломное задание к курсу «Продвинутый JavaScript». Retro Game
 
-###### tags: `netology` `advanced js`
+#### Deployment: https://ivankravz.github.io/ahj-dnd/
 
 ## Предыстория
 
