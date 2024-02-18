@@ -36,6 +36,3 @@ export function generateTeam(allowedTypes, maxLevel, characterCount) {
 
   return team;
 }
-
-
-
