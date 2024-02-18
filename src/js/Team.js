@@ -25,7 +25,7 @@ export default class Team {
     }
   }
 
-  addAll(...characters) {
+  addAll(characters) {
     this.characters = new Set([...this.characters, ...characters]);
   }
 
@@ -38,8 +38,6 @@ export default class Team {
   }
 
   delete(elem) {
-    console.log('delete elem', elem)
-    this.characters.delete(elem);
-    console.log('this.characters', this.characters)
+    this.characters.delete(elem)
   }
 }

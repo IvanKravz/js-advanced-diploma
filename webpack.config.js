@@ -1,13 +1,13 @@
 const path = require('node:path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-// const NodePolyfillPlugin = require("node-polyfill-webpack-plugin")
 
 module.exports = {
   devtool: 'source-map',
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
+    assetModuleFilename: 'assets/[name][hash][ext]',
   },
   devServer: {
     static: {
@@ -43,12 +43,12 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
+      favicon: './src/img/swords.png',
       template: './src/index.html',
       filename: 'index.html',
     }),
     new MiniCssExtractPlugin({
       filename: '[name].css',
     }),
-    // new NodePolyfillPlugin(),
   ],
 };

@@ -18,44 +18,103 @@ export default class GameController {
     this.gamePlay = gamePlay;
     this.gameState = new GameState();
     this.stateService = stateService;
-    this.userTeam = new Team()
-    this.rivalTeam = new Team()
+    this.userTeam = new Team();
+    this.rivalTeam = new Team();
     this.userHeroes = [Bowman, Swordsman, Magician];
-    this.rivalHeroes = [Daemon, Undead, Vampire]
+    this.rivalHeroes = [Daemon, Undead, Vampire];
   }
 
   init() {
     // TODO: add event listeners to gamePlay events
     // TODO: load saved stated from stateService
     this.gamePlay.drawUi(themes[this.gameState.level])
-    this.userTeam.add(generateTeam(this.userHeroes, 1, 3));
-    this.rivalTeam.add(generateTeam(this.rivalHeroes, 1, 3));
-    this.addHeroUser(this.userTeam.characters)
-    this.addHeroUser(this.rivalTeam.characters)
+    this.userTeam.addAll(generateTeam(this.userHeroes, 1, 2));
+    this.rivalTeam.addAll(generateTeam(this.rivalHeroes, 1, 2));
+    this.addHeroUser(this.userTeam, this.UserPositions());
+    this.addHeroUser(this.rivalTeam, this.RivalPositions());
     this.gamePlay.redrawPositions(this.gameState.heroesList) // Добавляем персонажей на поле
     
-    // this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
-
     this.gamePlay.addCellEnterListener((index) => {
       this.onCellEnter(index);
-    })
+    });
 
     this.gamePlay.addCellLeaveListener((index) => {
       this.onCellLeave(index);
-    })
+    });
 
     this.gamePlay.addCellClickListener((index) => {
       this.onCellClick(index);
-      
+    });
+
+    this.gamePlay.addNewGameListener(() => {
+      const gameController = new GameController(this.gamePlay, this.stateService);
+      gameController.init()
+    });
+    
+    this.gamePlay.addSaveGameListener(() => {
+      this.stateService.save(GameState.from(this.gameState));
+      if (localStorage.getItem("state") === null) {
+        GamePlay.showMessage('Игра не сохранилась')
+      }
+      GamePlay.showMessage('Игра сохранена')
+    });
+
+    this.gamePlay.addLoadGameListener(() => {
+      const loadGame = this.stateService.load()
+      if (!loadGame) {
+        GamePlay.showError('Отсутствует сохраненная игра');
+      }
+      this.gameState.level = loadGame.level;
+      this.gamePlay.drawUi(themes[loadGame.level]);
+      this.gameState.permissionMove = loadGame.permissionMove;
+      this.gameState.heroesList = [];
+      this.gameState.points = loadGame.points;
+      this.gameState.statistic = loadGame.statistic;
+      this.gameState.characterSelected = loadGame.characterSelected;
+      this.userTeam = new Team();
+      this.rivalTeam = new Team();
+      loadGame.heroesList.forEach((elem) => {
+        let char;
+        switch (elem.character.type) {
+          case 'swordsman':
+            char = new Swordsman(elem.character.level);
+            this.userTeam.addAll([char]);
+            break;
+          case 'bowman':
+            char = new Bowman(elem.character.level);
+            this.userTeam.addAll([char]);
+            break;
+          case 'magician':
+            char = new Magician(elem.character.level);
+            this.userTeam.addAll([char]);
+            break;
+          case 'undead':
+            char = new Undead(elem.character.level);
+            this.rivalTeam.addAll([char]);
+            break;
+          case 'vampire':
+            char = new Vampire(elem.character.level);
+            this.rivalTeam.addAll([char]);
+            break;
+          case 'daemon':
+            char = new Daemon(elem.character.level);
+            this.rivalTeam.addAll([char]);
+            break;
+        }
+        char.health = elem.character.health;
+        this.gameState.heroesList.push(new PositionedCharacter(char, elem.position));
+      });
+
+      this.gamePlay.redrawPositions(this.gameState.heroesList);
+      GamePlay.showMessage('Игра загружена')
     })
   }
 
   onCellClick(index) {
     // TODO: react to click
-    let cellArray = this.gamePlay.containerCells()
 
     if (this.UserIsCharacter(index) && this.gameState.permissionMove) {
-      cellArray.forEach((elem) => elem.classList.remove('selected'))
+      this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected'))
       this.gamePlay.selectCell(index)
       this.gameState.characterSelected = index
       } else if (!this.gameState.characterSelected && this.RivalIsCharacter(index)) {
@@ -69,10 +128,10 @@ export default class GameController {
         this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected-green'))
     }
 
-    // Атака персонажом пользователя
+    // Атака противника
     if (this.getCharacterByindex(index) && this.RivalIsCharacter(index)) {
       if (this.getCellAttack(index)) {
-        this.getAttack(index, this.gameState.characterSelected);
+        this.getAttack(index);
         this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected'))
       }
     }
@@ -119,6 +178,7 @@ export default class GameController {
   getCharacterByindex(idx) {
     // Функция возвращает объект, index которого совпадает с index клетки
     return this.gameState.heroesList.find((elem) => elem.position === idx);
+     
   } 
 
   UserIsCharacter(idx) {
@@ -164,27 +224,13 @@ export default class GameController {
     return positions[random]
   }
   
-  addHeroUser(heroes) {
+  addHeroUser(team, positions) {
     // Функция создания массива героев пользователя и противника для дальнейщего добавления их на поле
-    let userHero = ['swordsman', 'bowman', 'magician']
-    let rivalHero = ['daemon', 'undead', 'vampire']
-    let userPositions = this.UserPositions();
-    let rivalPositions = this.RivalPositions();
-
-    for (let hero of heroes) {
-        for (let i = 0; i < hero.length; i += 1) {
-          if (userHero.includes(hero[i].type)) {
-            let randomPosition = this.randomPosition(userPositions)
-            const positionedCharacter = new PositionedCharacter(hero[i], randomPosition);
-            userPositions.splice(userPositions.indexOf(randomPosition), 1)
-            this.gameState.heroesList.push(positionedCharacter)
-        } else if (rivalHero.includes(hero[i].type)) {
-          let randomPosition = this.randomPosition(rivalPositions)
-            const positionedCharacter = new PositionedCharacter(hero[i], randomPosition);
-            rivalPositions.splice(rivalPositions.indexOf(randomPosition), 1)
-            this.gameState.heroesList.push(positionedCharacter)
-        }
-      }  
+    const copyPositions  = [...positions];
+    for (const item of team.characters) {
+      const random = this.randomPosition(copyPositions );
+      this.gameState.heroesList.push(new PositionedCharacter(item, random));
+      copyPositions.splice(copyPositions.indexOf(random), 1);
     }
   }
  
@@ -289,7 +335,6 @@ export default class GameController {
         target.health -= damage;
         if (target.health <= 0) {
           this.getDeletion(index);
-          console.log('this.getDeletion(index)', this.getDeletion(index))
           this.rivalTeam.delete(target);
         }
       }).then(() => {
@@ -386,16 +431,57 @@ export default class GameController {
   }
 
   GameStatistic() {
+    let sumPoints = this.gameState.statistic.reduce((a, b) => a + b, 0);
     
+    if (this.userTeam.characters.size === 0) {
+      this.gameState.statistic.push(this.gameState.points);
+      GamePlay.showMessage(`Вы проиграли, количество очков ${sumPoints + this.gameState.points}`);
+    }
+
+    if (this.rivalTeam.characters.size === 0 && this.gameState.level <= 3) {
+      this.gameState.permissionMove = true;
+      this.scorePoints();
+      this.gameState.statistic.push(this.gameState.points);
+      GamePlay.showMessage(`Вы прошли уровень ${this.gameState.level}, количество очков за уровень ${this.gameState.points}`);
+      this.gameState.level += 1;
+      this.nextLevel()
+    }
+
+    if (this.rivalTeam.characters.size === 0 && this.gameState.level === 4) {
+      this.scorePoints();
+      this.gameState.statistic.push(this.gameState.points);
+      GamePlay.showMessage(`Вы прошли игру, количество очков за игру ${sumPoints + this.gameState.points}`);
+    }
   }
 
   scorePoints() {
-    
+    this.gameState.points += this.userTeam.toArray().reduce((a, b) => a + b.health, 0);
   }
 
-  levelUp() {
-    
+  nextLevel() {
+    this.gameState.heroesList = [];
+    this.userTeam.characters.forEach((char) => char.levelUp());
+
+    if (this.gameState.level === 2) {
+      this.userTeam.addAll(generateTeam(this.userHeroes, 2, 1));
+      this.rivalTeam.addAll(generateTeam(this.rivalHeroes, 2, 3));
+    }
+
+    if (this.gameState.level === 3) {
+      this.userTeam.addAll(generateTeam(this.userHeroes, 2, 0));
+      this.rivalTeam.addAll(generateTeam(this.rivalHeroes, 2, 3));
+    }
+
+    if (this.gameState.level === 4) {
+      this.userTeam.addAll(generateTeam(this.userHeroes, 2, 1));
+      this.rivalTeam.addAll(generateTeam(this.rivalHeroes, 2, 4));
+    }
+
+    GamePlay.showMessage(`Уровень ${this.gameState.level}`);
+    this.gamePlay.drawUi(themes[this.gameState.level]);
+    this.addHeroUser(this.userTeam, this.UserPositions());
+    this.addHeroUser(this.rivalTeam, this.RivalPositions());
+    this.gamePlay.redrawPositions(this.gameState.heroesList);
   }
 
-  
 }
